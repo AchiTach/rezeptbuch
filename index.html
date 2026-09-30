@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#f7f3ed" />
+  <meta name="description" content="Persönliches digitales Rezeptbuch" />
+  <title>Rezeptbuch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#" aria-label="Zur Startseite">
+      <span class="brand-mark">R</span>
+      <span class="brand-copy"><strong>Rezeptbuch</strong><small id="recipeCount">Rezepte werden geladen …</small></span>
+    </a>
+    <button id="themeToggle" class="icon-btn" aria-label="Darstellung wechseln" title="Darstellung wechseln">☾</button>
+  </header>
+
+  <main>
+    <section class="hero shell">
+      <div class="hero-copy">
+        <p class="eyebrow">MEINE REZEPTSAMMLUNG</p>
+        <h1>Was möchtest du heute kochen?</h1>
+        <p>Alle Lieblingsrezepte an einem Ort – durchsuchbar nach Gericht, Zutat, Kategorie und Tag.</p>
+      </div>
+      <button id="randomBtn" class="random-btn">↻ <span>Zufallsrezept</span></button>
+    </section>
+
+    <section class="control-wrap shell">
+      <div class="search-row">
+        <label class="search-box">
+          <span aria-hidden="true">⌕</span>
+          <input id="searchInput" type="search" placeholder="Rezept oder Zutat suchen …" autocomplete="off" />
+        </label>
+        <button id="filterToggle" class="filter-btn" type="button">Filter</button>
+      </div>
+
+      <div id="filters" class="filters">
+        <div class="filter-section">
+          <span class="filter-label">Kategorie</span>
+          <div id="categoryChips" class="chips"></div>
+        </div>
+
+        <div class="filter-grid">
+          <label><span class="filter-label">max. kcal</span><input id="maxCalories" type="number" min="0" step="50" placeholder="alle" /></label>
+          <label><span class="filter-label">min. Protein</span><input id="minProtein" type="number" min="0" step="5" placeholder="alle" /></label>
+          <label><span class="filter-label">max. Zeit</span><input id="maxTime" type="number" min="0" step="5" placeholder="Min." /></label>
+          <label><span class="filter-label">Sortierung</span>
+            <select id="sortSelect">
+              <option value="newest">Neueste</option>
+              <option value="az">A–Z</option>
+              <option value="za">Z–A</option>
+              <option value="protein">Protein ↓</option>
+              <option value="calories">Kalorien ↑</option>
+              <option value="time">Zeit ↑</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="filter-footer">
+          <div id="tagChips" class="chips compact"></div>
+          <button id="resetFilters" class="text-btn" type="button">Filter zurücksetzen</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="results shell">
+      <div class="results-head">
+        <div>
+          <p class="eyebrow">REZEPTE</p>
+          <h2 id="resultTitle">Alle Rezepte</h2>
+          <p id="resultMeta" class="muted"></p>
+        </div>
+      </div>
+
+      <div id="loadingState" class="state-card">
+        <div class="spinner" aria-hidden="true"></div>
+        <h3>Rezepte werden geladen</h3>
+        <p>Einen kleinen Moment …</p>
+      </div>
+
+      <div id="errorState" class="state-card hidden">
+        <div class="state-icon">!</div>
+        <h3>Das Rezeptbuch konnte nicht geladen werden</h3>
+        <p id="errorMessage">Bitte versuche es später erneut.</p>
+        <button id="retryBtn" class="primary-btn" type="button">Erneut versuchen</button>
+      </div>
+
+      <section id="recipeGrid" class="recipe-grid" aria-live="polite"></section>
+
+      <div id="emptyState" class="state-card hidden">
+        <div class="state-icon">🍽</div>
+        <h3 id="emptyTitle">Noch keine Rezepte</h3>
+        <p id="emptyText">Sobald Rezepte gespeichert sind, erscheinen sie hier automatisch.</p>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="recipeDialog" class="recipe-dialog">
+    <button class="dialog-close" data-close-dialog aria-label="Schließen">×</button>
+    <div id="recipeDetail"></div>
+  </dialog>
+
+  <footer class="site-footer shell">
+    <span>Rezeptbuch</span>
+    <span id="lastUpdated"></span>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>
