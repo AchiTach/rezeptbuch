@@ -13,8 +13,9 @@ async function load(){
     $('#loadingState').classList.add('hidden');
     render();
   }catch(e){
+    recipes=[];
     $('#loadingState').classList.add('hidden');
-    $('#errorState').classList.remove('hidden');
+    render();
   }
 }
 function allTags(){return [...new Set(recipes.flatMap(r=>r.tags||[]))].sort()}
