@@ -9,14 +9,13 @@ function initials(t){return (String(t).match(/\b\p{L}/gu)||['R']).slice(0,2).joi
 
 async function load(){
   try{
-    recipes=await fetch('recipes.json?'+Date.now()).then(r=>{if(!r.ok)throw Error();return r.json()});
-    $('#loadingState').classList.add('hidden');
-    render();
+    const node=$('#recipe-data');
+    recipes=node?JSON.parse(node.textContent||'[]'):[];
   }catch(e){
     recipes=[];
-    $('#loadingState').classList.add('hidden');
-    render();
   }
+  $('#loadingState').classList.add('hidden');
+  render();
 }
 function allTags(){return [...new Set(recipes.flatMap(r=>r.tags||[]))].sort()}
 function filter(){
