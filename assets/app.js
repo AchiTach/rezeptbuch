@@ -1,6 +1,8 @@
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let recipes=[], category='Alle', tags=new Set(), current=null, servings=1;
 const cats=['Frühstück','Hauptspeise vegetarisch','Hauptspeise vegan','Hauptspeise Fleisch','Hauptspeise Fisch','Beilage & Salat','Suppe','Kuchen & Gebäck','Dessert','Snack','Saucen & Dips'];
+const SUPABASE_URL='https://gbdtasehhuhdlpyvsxzj.supabase.co';
+const SUPABASE_KEY='sb_publishable_CjjqswWEA-V_XlT5mGLuZQ_jKnKe_OG';
 
 function esc(s=''){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function n(v){return v==null||v===''?null:Number(v)}
@@ -8,11 +10,54 @@ function fmt(v,d=1){const x=n(v);return x==null?'–':new Intl.NumberFormat('de-
 function initials(t){return (String(t).match(/\b\p{L}/gu)||['R']).slice(0,2).join('').toUpperCase()}
 
 async function load(){
+  const select=[
+    'id','title','description','servings','prep_time_min','cook_time_min','total_time_min',
+    'calories_per_serving','protein_g_per_serving','carbs_g_per_serving','fat_g_per_serving','fiber_g_per_serving',
+    'macro_source','source_type','source_url','source_author','image_url','notes','created_at','updated_at',
+    'categories(name)',
+    'ingredients(position,amount,amount_text,unit,ingredient,note)',
+    'instructions(position,instruction)',
+    'recipe_tags(tags(name))'
+  ].join(',');
+  const url=SUPABASE_URL+'/rest/v1/recipes?is_published=eq.true&order=created_at.desc&select='+encodeURIComponent(select);
   try{
-    const node=$('#recipe-data');
-    recipes=node?JSON.parse(node.textContent||'[]'):[];
+    const res=await fetch(url,{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY}});
+    if(!res.ok) throw new Error('Supabase '+res.status);
+    const rows=await res.json();
+    recipes=rows.map(r=>({
+      id:r.id,
+      title:r.title,
+      description:r.description,
+      category:r.categories?.name||'',
+      servings:n(r.servings),
+      prepMinutes:r.prep_time_min,
+      cookMinutes:r.cook_time_min,
+      totalMinutes:r.total_time_min,
+      calories:r.calories_per_serving,
+      proteinG:r.protein_g_per_serving,
+      carbsG:r.carbs_g_per_serving,
+      fatG:r.fat_g_per_serving,
+      fiberG:r.fiber_g_per_serving,
+      macroSource:r.macro_source,
+      sourceType:r.source_type,
+      sourceUrl:r.source_url,
+      sourceAuthor:r.source_author,
+      imageUrl:r.image_url,
+      notes:r.notes,
+      createdAt:r.created_at,
+      updatedAt:r.updated_at,
+      ingredients:[...(r.ingredients||[])].sort((a,b)=>(a.position||0)-(b.position||0)).map(i=>({amount:i.amount,amountText:i.amount_text,unit:i.unit,ingredient:i.ingredient,note:i.note})),
+      instructions:[...(r.instructions||[])].sort((a,b)=>(a.position||0)-(b.position||0)).map(i=>({instruction:i.instruction})),
+      tags:(r.recipe_tags||[]).map(rt=>rt.tags?.name).filter(Boolean).sort()
+    }));
+    $('#errorState').classList.add('hidden');
   }catch(e){
-    recipes=[];
+    try{
+      const node=$('#recipe-data');
+      recipes=node?JSON.parse(node.textContent||'[]'):[];
+    }catch(_){recipes=[]}
+    $('#errorMessage').textContent='Live-Daten konnten nicht geladen werden. Es wird der letzte gespeicherte Stand angezeigt.';
+    $('#errorState').classList.toggle('hidden',recipes.length>0);
   }
   $('#loadingState').classList.add('hidden');
   render();
