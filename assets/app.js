@@ -96,7 +96,7 @@ function render(){
   $('#recipeCount').textContent=recipes.length+' '+(recipes.length===1?'Rezept':'Rezepte');
   const usedCats=cats.filter(c=>recipes.some(r=>r.category===c));
   $('#categoryChips').innerHTML=['Alle',...usedCats].map(c=>'<button class="chip '+(category===c?'active':'')+'" data-c="'+esc(c)+'">'+esc(c)+'</button>').join('');
-  $('#categoryChips [data-c]').forEach(b=>b.onclick=()=>{category=b.dataset.c;render()});
+  [...document.querySelectorAll('#categoryChips [data-c]')].forEach(b=>b.onclick=()=>{category=b.dataset.c;render()});
   const contributorSelect=$('#contributorSelect');
   if(contributorSelect){
     const names=allContributors();
