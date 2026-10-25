@@ -114,7 +114,7 @@ function render(){
 }
 function card(r){
   const img=r.imageUrl?'<img src="'+esc(r.imageUrl)+'" alt="'+esc(r.title)+'">':'<div class="placeholder">'+esc(initials(r.title))+'</div>';
-  const cooked='<div class="cook-meta"><span>🍳 '+(r.cookCount||0)+'× gekocht</span><span>'+(r.lastCookedAt?'zuletzt '+new Intl.DateTimeFormat('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(r.lastCookedAt)):'noch nie gekocht')+'</span></div>';
+  const cooked='<div class="cook-meta"><span class="cook-count-badge">🍳 '+(r.cookCount||0)+'× gekocht</span><span>'+(r.lastCookedAt?'zuletzt '+new Intl.DateTimeFormat('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(r.lastCookedAt)):'noch nie gekocht')+'</span></div>';
   const added=r.addedBy?'<div class="added-by">Hinzugefügt von <b>'+esc(r.addedBy)+'</b></div>':'';
   return '<article class="recipe-card" data-id="'+esc(r.id)+'"><div class="media">'+img+'<span>'+esc(r.category||'')+'</span></div><div class="body"><small>'+(r.totalMinutes?fmt(r.totalMinutes,0)+' Min.':'')+'</small><h3>'+esc(r.title)+'</h3><p>'+esc(r.description||'')+'</p>'+added+cooked+'<div class="stats"><b>'+fmt(r.calories,0)+'<small>kcal</small></b><b>'+(r.proteinG==null?'–':fmt(r.proteinG)+' g')+'<small>Protein</small></b><b>'+fmt(r.servings,1)+'<small>Portionen</small></b></div><div class="tags">'+(r.tags||[]).slice(0,3).map(t=>'<i>#'+esc(t)+'</i>').join('')+'</div></div></article>';
 }
@@ -186,7 +186,7 @@ function detail(){
   const ing=(r.ingredients||[]).map(i=>'<li><b>'+((n(i.amount)!=null?fmt(n(i.amount)*factor,2):esc(i.amountText||''))+(i.unit?' '+esc(i.unit):''))+'</b><span>'+esc(i.ingredient||'')+(i.note?'<small>'+esc(i.note)+'</small>':'')+'</span></li>').join('');
   const steps=(r.instructions||[]).map((s,i)=>cooking?'<li class="cook-step"><label><input type="checkbox"><span><b>Schritt '+(i+1)+'</b>'+esc(typeof s==='string'?s:s.instruction||'')+'</span></label></li>':'<li>'+esc(typeof s==='string'?s:s.instruction||'')+'</li>').join('');
   const addedInfo=r.addedBy?'<div class="detail-added">Hinzugefügt von <b>'+esc(r.addedBy)+'</b></div>':'';
-  const cookInfo='<div class="cook-history"><b>🍳 '+(r.cookCount||0)+'× gekocht</b><span>'+cookedLabel(r)+'</span></div>';
+  const cookInfo='<div class="cook-history"><b class="cook-count-large">🍳 '+(r.cookCount||0)+'× gekocht</b><span>'+cookedLabel(r)+'</span></div>';
   const cookActions=cooking
     ?'<div class="cook-panel"><div><strong>Kochmodus aktiv</strong><span id="wakeStatus">Bildschirm-Wachhalten wird aktiviert …</span></div><div class="cook-actions"><button id="cancelCooking" class="secondary-btn" type="button">Kochmodus beenden</button><button id="finishCooking" class="primary-btn" type="button">✓ Fertig gekocht</button></div><small id="cookMessage"></small></div>'
     :'<div class="cook-panel start"><div><strong>Bereit zum Kochen?</strong><span>Im Kochmodus bleibt der Bildschirm auf unterstützten Geräten an.</span></div><button id="startCooking" class="cook-btn" type="button">🍳 Kochen starten</button><small id="cookMessage"></small></div>';
