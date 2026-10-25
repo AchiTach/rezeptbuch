@@ -1,5 +1,5 @@
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-let recipes=[], category='Alle', tags=new Set(), current=null, servings=1;
+let recipes=[], category='Alle', tags=new Set(), current=null, servings=1, cooking=false, wakeLock=null;
 const cats=['Frühstück','Hauptspeise vegetarisch','Hauptspeise vegan','Hauptspeise Fleisch','Hauptspeise Fisch','Beilage & Salat','Suppe','Kuchen & Gebäck','Dessert','Snack','Saucen & Dips'];
 const SUPABASE_URL='https://gbdtasehhuhdlpyvsxzj.supabase.co';
 const SUPABASE_KEY='sb_publishable_CjjqswWEA-V_XlT5mGLuZQ_jKnKe_OG';
@@ -17,7 +17,8 @@ async function load(){
     'categories(name)',
     'ingredients(position,amount,amount_text,unit,ingredient,note)',
     'instructions(position,instruction)',
-    'recipe_tags(tags(name))'
+    'recipe_tags(tags(name))',
+    'recipe_cooks(cooked_at)'
   ].join(',');
   const url=SUPABASE_URL+'/rest/v1/recipes?is_published=eq.true&order=created_at.desc&select='+encodeURIComponent(select);
   try{
@@ -48,7 +49,9 @@ async function load(){
       updatedAt:r.updated_at,
       ingredients:[...(r.ingredients||[])].sort((a,b)=>(a.position||0)-(b.position||0)).map(i=>({amount:i.amount,amountText:i.amount_text,unit:i.unit,ingredient:i.ingredient,note:i.note})),
       instructions:[...(r.instructions||[])].sort((a,b)=>(a.position||0)-(b.position||0)).map(i=>({instruction:i.instruction})),
-      tags:(r.recipe_tags||[]).map(rt=>rt.tags?.name).filter(Boolean).sort()
+      tags:(r.recipe_tags||[]).map(rt=>rt.tags?.name).filter(Boolean).sort(),
+      cookCount:(r.recipe_cooks||[]).length,
+      lastCookedAt:(r.recipe_cooks||[]).map(x=>x.cooked_at).filter(Boolean).sort().at(-1)||null
     }));
     $('#errorState').classList.add('hidden');
   }catch(e){
@@ -71,7 +74,7 @@ function filter(){
     return (!q||hay.includes(q))&&(category==='Alle'||r.category===category)&&[...tags].every(t=>(r.tags||[]).includes(t))&&(maxC==null||r.calories==null||r.calories<=maxC)&&(minP==null||r.proteinG==null||r.proteinG>=minP)&&(maxT==null||r.totalMinutes==null||r.totalMinutes<=maxT);
   });
   const s=$('#sortSelect').value;
-  out.sort((a,b)=>s==='az'?a.title.localeCompare(b.title,'de'):s==='za'?b.title.localeCompare(a.title,'de'):s==='protein'?(b.proteinG||-1)-(a.proteinG||-1):s==='calories'?(a.calories??Infinity)-(b.calories??Infinity):s==='time'?(a.totalMinutes??Infinity)-(b.totalMinutes??Infinity):new Date(b.createdAt||0)-new Date(a.createdAt||0));
+  out.sort((a,b)=>s==='az'?a.title.localeCompare(b.title,'de'):s==='za'?b.title.localeCompare(a.title,'de'):s==='protein'?(b.proteinG||-1)-(a.proteinG||-1):s==='calories'?(a.calories??Infinity)-(b.calories??Infinity):s==='time'?(a.totalMinutes??Infinity)-(b.totalMinutes??Infinity):s==='cooked'?(b.cookCount||0)-(a.cookCount||0)||new Date(b.lastCookedAt||0)-new Date(a.lastCookedAt||0):s==='longago'?(a.lastCookedAt?1:0)-(b.lastCookedAt?1:0)||(a.lastCookedAt&&b.lastCookedAt?new Date(a.lastCookedAt)-new Date(b.lastCookedAt):0):new Date(b.createdAt||0)-new Date(a.createdAt||0));
   return out;
 }
 function render(){
@@ -91,23 +94,94 @@ function render(){
 }
 function card(r){
   const img=r.imageUrl?'<img src="'+esc(r.imageUrl)+'" alt="'+esc(r.title)+'">':'<div class="placeholder">'+esc(initials(r.title))+'</div>';
-  return '<article class="recipe-card" data-id="'+esc(r.id)+'"><div class="media">'+img+'<span>'+esc(r.category||'')+'</span></div><div class="body"><small>'+(r.totalMinutes?fmt(r.totalMinutes,0)+' Min.':'')+'</small><h3>'+esc(r.title)+'</h3><p>'+esc(r.description||'')+'</p><div class="stats"><b>'+fmt(r.calories,0)+'<small>kcal</small></b><b>'+(r.proteinG==null?'–':fmt(r.proteinG)+' g')+'<small>Protein</small></b><b>'+fmt(r.servings,1)+'<small>Portionen</small></b></div><div class="tags">'+(r.tags||[]).slice(0,3).map(t=>'<i>#'+esc(t)+'</i>').join('')+'</div></div></article>';
+  const cooked='<div class="cook-meta"><span>🍳 '+(r.cookCount||0)+'× gekocht</span><span>'+(r.lastCookedAt?'zuletzt '+new Intl.DateTimeFormat('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(r.lastCookedAt)):'noch nie gekocht')+'</span></div>';
+  return '<article class="recipe-card" data-id="'+esc(r.id)+'"><div class="media">'+img+'<span>'+esc(r.category||'')+'</span></div><div class="body"><small>'+(r.totalMinutes?fmt(r.totalMinutes,0)+' Min.':'')+'</small><h3>'+esc(r.title)+'</h3><p>'+esc(r.description||'')+'</p>'+cooked+'<div class="stats"><b>'+fmt(r.calories,0)+'<small>kcal</small></b><b>'+(r.proteinG==null?'–':fmt(r.proteinG)+' g')+'<small>Protein</small></b><b>'+fmt(r.servings,1)+'<small>Portionen</small></b></div><div class="tags">'+(r.tags||[]).slice(0,3).map(t=>'<i>#'+esc(t)+'</i>').join('')+'</div></div></article>';
 }
 function openDetail(id){
-  const r=recipes.find(x=>x.id===id); if(!r)return; current=r; servings=r.servings||1; detail(); $('#recipeDialog').showModal();
+  const r=recipes.find(x=>x.id===id); if(!r)return; current=r; servings=r.servings||1; cooking=false; detail(); $('#recipeDialog').showModal();
+}
+
+function cookedLabel(r){
+  if(!r.lastCookedAt)return 'Noch nie gekocht';
+  return 'Zuletzt gekocht am '+new Intl.DateTimeFormat('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(r.lastCookedAt));
+}
+async function requestWakeLock(){
+  const status=$('#wakeStatus');
+  if(!('wakeLock' in navigator)){
+    if(status)status.textContent='Bildschirm-Wachhalten wird von diesem Browser nicht unterstützt.';
+    return;
+  }
+  try{
+    if(wakeLock&&!wakeLock.released)return;
+    wakeLock=await navigator.wakeLock.request('screen');
+    if(status)status.textContent='Bildschirm bleibt während des Kochens aktiv.';
+    wakeLock.addEventListener('release',()=>{const s=$('#wakeStatus');if(s&&cooking)s.textContent='Bildschirm-Wachhalten wurde unterbrochen.'});
+  }catch(e){
+    if(status)status.textContent='Bildschirm konnte nicht dauerhaft wach gehalten werden.';
+  }
+}
+async function releaseWakeLock(){
+  if(wakeLock&&!wakeLock.released){try{await wakeLock.release()}catch(e){}}
+  wakeLock=null;
+}
+async function startCooking(){
+  cooking=true;
+  detail();
+  await requestWakeLock();
+}
+async function cancelCooking(){
+  cooking=false;
+  await releaseWakeLock();
+  detail();
+}
+async function finishCooking(){
+  const btn=$('#finishCooking');
+  const msg=$('#cookMessage');
+  if(btn)btn.disabled=true;
+  if(msg)msg.textContent='Wird gespeichert …';
+  try{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/recipe_cooks',{
+      method:'POST',
+      headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+      body:JSON.stringify([{recipe_id:current.id}])
+    });
+    if(!res.ok)throw new Error('Supabase '+res.status);
+    current.cookCount=(current.cookCount||0)+1;
+    current.lastCookedAt=new Date().toISOString();
+    cooking=false;
+    await releaseWakeLock();
+    detail();
+    render();
+    const done=$('#cookMessage');
+    if(done)done.textContent='Gespeichert – guten Appetit!';
+  }catch(e){
+    if(btn)btn.disabled=false;
+    if(msg)msg.textContent='Konnte noch nicht gespeichert werden. Bitte erneut versuchen.';
+  }
 }
 function detail(){
   const r=current, factor=servings/(r.servings||1);
+  $('#recipeDialog').classList.toggle('cooking',cooking);
   const ing=(r.ingredients||[]).map(i=>'<li><b>'+((n(i.amount)!=null?fmt(n(i.amount)*factor,2):esc(i.amountText||''))+(i.unit?' '+esc(i.unit):''))+'</b><span>'+esc(i.ingredient||'')+(i.note?'<small>'+esc(i.note)+'</small>':'')+'</span></li>').join('');
-  const steps=(r.instructions||[]).map(s=>'<li>'+esc(typeof s==='string'?s:s.instruction||'')+'</li>').join('');
-  $('#recipeDetail').innerHTML='<div class="detailHead"><h2>'+esc(r.title)+'</h2><p>'+esc(r.description||'')+'</p></div><div class="detailBody"><div class="macro"><span><b>'+fmt(r.calories,0)+'</b> kcal</span><span><b>'+fmt(r.proteinG)+'</b> g Protein</span><span><b>'+fmt(r.carbsG)+'</b> g KH</span><span><b>'+fmt(r.fatG)+'</b> g Fett</span></div><div class="serv"><button data-s="-">−</button><strong>'+fmt(servings,2)+' Portionen</strong><button data-s="+">+</button></div><div class="cols"><section><h3>Zutaten</h3><ul class="ingredients">'+ing+'</ul></section><section><h3>Zubereitung</h3><ol>'+steps+'</ol></section></div>'+(r.sourceUrl?'<a class="source" href="'+esc(r.sourceUrl)+'" target="_blank" rel="noopener">Originalquelle öffnen ↗</a>':'')+'</div>';
-  $$('[data-s]').forEach(b=>b.onclick=()=>{servings=Math.max(.25,servings+(b.dataset.s==='+'?1:-1));detail()});
+  const steps=(r.instructions||[]).map((s,i)=>cooking?'<li class="cook-step"><label><input type="checkbox"><span><b>Schritt '+(i+1)+'</b>'+esc(typeof s==='string'?s:s.instruction||'')+'</span></label></li>':'<li>'+esc(typeof s==='string'?s:s.instruction||'')+'</li>').join('');
+  const cookInfo='<div class="cook-history"><b>🍳 '+(r.cookCount||0)+'× gekocht</b><span>'+cookedLabel(r)+'</span></div>';
+  const cookActions=cooking
+    ?'<div class="cook-panel"><div><strong>Kochmodus aktiv</strong><span id="wakeStatus">Bildschirm-Wachhalten wird aktiviert …</span></div><div class="cook-actions"><button id="cancelCooking" class="secondary-btn" type="button">Kochmodus beenden</button><button id="finishCooking" class="primary-btn" type="button">✓ Fertig gekocht</button></div><small id="cookMessage"></small></div>'
+    :'<div class="cook-panel start"><div><strong>Bereit zum Kochen?</strong><span>Im Kochmodus bleibt der Bildschirm auf unterstützten Geräten an.</span></div><button id="startCooking" class="cook-btn" type="button">🍳 Kochen starten</button><small id="cookMessage"></small></div>';
+  $('#recipeDetail').innerHTML='<div class="detailHead"><h2>'+esc(r.title)+'</h2><p>'+esc(r.description||'')+'</p></div><div class="detailBody">'+cookInfo+cookActions+'<div class="macro"><span><b>'+fmt(r.calories,0)+'</b> kcal</span><span><b>'+fmt(r.proteinG)+'</b> g Protein</span><span><b>'+fmt(r.carbsG)+'</b> g KH</span><span><b>'+fmt(r.fatG)+'</b> g Fett</span></div><div class="serv"><button data-s="-">−</button><strong>'+fmt(servings,2)+' Portionen</strong><button data-s="+">+</button></div><div class="cols"><section><h3>Zutaten</h3><ul class="ingredients">'+ing+'</ul></section><section><h3>Zubereitung</h3><ol class="'+(cooking?'cook-steps':'')+'">'+steps+'</ol></section></div>'+(r.sourceUrl?'<a class="source" href="'+esc(r.sourceUrl)+'" target="_blank" rel="noopener">Originalquelle öffnen ↗</a>':'')+'</div>';
+  $('[data-s]').forEach(b=>b.onclick=()=>{servings=Math.max(.25,servings+(b.dataset.s==='+'?1:-1));detail();if(cooking)requestWakeLock()});
+  const start=$('#startCooking');if(start)start.onclick=startCooking;
+  const cancel=$('#cancelCooking');if(cancel)cancel.onclick=cancelCooking;
+  const finish=$('#finishCooking');if(finish)finish.onclick=finishCooking;
 }
+document.addEventListener('visibilitychange',()=>{if(cooking&&document.visibilityState==='visible')requestWakeLock()});
+
 $('#searchInput').oninput=render; ['maxCalories','minProtein','maxTime'].forEach(id=>$('#'+id).oninput=render); $('#sortSelect').onchange=render;
 $('#resetFilters').onclick=()=>{category='Alle';tags.clear();$('#searchInput').value='';$('#maxCalories').value='';$('#minProtein').value='';$('#maxTime').value='';render()};
 $('#filterToggle').onclick=()=>$('#filters').classList.toggle('open');
 $('#randomBtn').onclick=()=>{const r=filter();if(r.length)openDetail(r[Math.floor(Math.random()*r.length)].id)};
-$$('[data-close-dialog]').forEach(b=>b.onclick=()=>$('#recipeDialog').close());
+$('[data-close-dialog]').forEach(b=>b.onclick=async()=>{cooking=false;await releaseWakeLock();$('#recipeDialog').close()});
+$('#recipeDialog').addEventListener('close',()=>{cooking=false;releaseWakeLock()});
 $('#retryBtn').onclick=load;
 const th=localStorage.getItem('rezeptbuch.theme')||'light';document.documentElement.dataset.theme=th;$('#themeToggle').textContent=th==='dark'?'☀':'☾';
 $('#themeToggle').onclick=()=>{const x=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=x;localStorage.setItem('rezeptbuch.theme',x);$('#themeToggle').textContent=x==='dark'?'☀':'☾'};
