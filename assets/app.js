@@ -89,7 +89,7 @@ function filter(){
     return (!q||hay.includes(q))&&(category==='Alle'||r.category===category)&&(contributor==='Alle'||r.addedBy===contributor)&&[...tags].every(t=>(r.tags||[]).includes(t))&&(maxC==null||r.calories==null||r.calories<=maxC)&&(minP==null||r.proteinG==null||r.proteinG>=minP)&&(maxT==null||r.totalMinutes==null||r.totalMinutes<=maxT);
   });
   const s=$('#sortSelect').value;
-  out.sort((a,b)=>s==='az'?a.title.localeCompare(b.title,'de'):s==='za'?b.title.localeCompare(a.title,'de'):s==='protein'?(b.proteinG||-1)-(a.proteinG||-1):s==='calories'?(a.calories??Infinity)-(b.calories??Infinity):s==='time'?(a.totalMinutes??Infinity)-(b.totalMinutes??Infinity):s==='cooked'?(b.cookCount||0)-(a.cookCount||0)||new Date(b.lastCookedAt||0)-new Date(a.lastCookedAt||0):s==='longago'?(a.lastCookedAt?1:0)-(b.lastCookedAt?1:0)||(a.lastCookedAt&&b.lastCookedAt?new Date(a.lastCookedAt)-new Date(b.lastCookedAt):0):new Date(b.createdAt||0)-new Date(a.createdAt||0));
+  out.sort((a,b)=>s==='az'?a.title.localeCompare(b.title,'de'):s==='za'?b.title.localeCompare(a.title,'de'):s==='protein'?(b.proteinG||-1)-(a.proteinG||-1):s==='calories'?(a.calories??Infinity)-(b.calories??Infinity):s==='time'?(a.totalMinutes??Infinity)-(b.totalMinutes??Infinity):s==='cooked'?(b.cookCount||0)-(a.cookCount||0)||new Date(b.lastCookedAt||0)-new Date(a.lastCookedAt||0):s==='leastcooked'?(a.cookCount||0)-(b.cookCount||0)||new Date(a.lastCookedAt||0)-new Date(b.lastCookedAt||0):s==='recentlycooked'?new Date(b.lastCookedAt||0)-new Date(a.lastCookedAt||0):s==='longago'?(a.lastCookedAt?1:0)-(b.lastCookedAt?1:0)||(a.lastCookedAt&&b.lastCookedAt?new Date(a.lastCookedAt)-new Date(b.lastCookedAt):0):new Date(b.createdAt||0)-new Date(a.createdAt||0));
   return out;
 }
 function render(){
