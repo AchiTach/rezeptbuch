@@ -1,5 +1,5 @@
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-let recipes=[], category='Alle', tags=new Set(), current=null, servings=1, cooking=false, wakeLock=null;
+let recipes=[], category='Alle', tags=new Set(), contributor='Alle', current=null, servings=1, cooking=false, wakeLock=null;
 const cats=['Frühstück','Hauptspeise vegetarisch','Hauptspeise vegan','Hauptspeise Fleisch','Hauptspeise Fisch','Beilage & Salat','Suppe','Kuchen & Gebäck','Dessert','Snack','Saucen & Dips'];
 const SUPABASE_URL='https://gbdtasehhuhdlpyvsxzj.supabase.co';
 const SUPABASE_KEY='sb_publishable_CjjqswWEA-V_XlT5mGLuZQ_jKnKe_OG';
@@ -80,12 +80,13 @@ async function load(){
   render();
 }
 function allTags(){return [...new Set(recipes.flatMap(r=>r.tags||[]))].sort()}
+function allContributors(){return [...new Set(recipes.map(r=>r.addedBy).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'de'))}
 function filter(){
   const q=$('#searchInput').value.trim().toLowerCase();
   const maxC=n($('#maxCalories').value), minP=n($('#minProtein').value), maxT=n($('#maxTime').value);
   let out=recipes.filter(r=>{
     const hay=[r.title,r.description,r.category,...(r.tags||[]),...(r.ingredients||[]).map(i=>i.ingredient)].join(' ').toLowerCase();
-    return (!q||hay.includes(q))&&(category==='Alle'||r.category===category)&&[...tags].every(t=>(r.tags||[]).includes(t))&&(maxC==null||r.calories==null||r.calories<=maxC)&&(minP==null||r.proteinG==null||r.proteinG>=minP)&&(maxT==null||r.totalMinutes==null||r.totalMinutes<=maxT);
+    return (!q||hay.includes(q))&&(category==='Alle'||r.category===category)&&(contributor==='Alle'||r.addedBy===contributor)&&[...tags].every(t=>(r.tags||[]).includes(t))&&(maxC==null||r.calories==null||r.calories<=maxC)&&(minP==null||r.proteinG==null||r.proteinG>=minP)&&(maxT==null||r.totalMinutes==null||r.totalMinutes<=maxT);
   });
   const s=$('#sortSelect').value;
   out.sort((a,b)=>s==='az'?a.title.localeCompare(b.title,'de'):s==='za'?b.title.localeCompare(a.title,'de'):s==='protein'?(b.proteinG||-1)-(a.proteinG||-1):s==='calories'?(a.calories??Infinity)-(b.calories??Infinity):s==='time'?(a.totalMinutes??Infinity)-(b.totalMinutes??Infinity):s==='cooked'?(b.cookCount||0)-(a.cookCount||0)||new Date(b.lastCookedAt||0)-new Date(a.lastCookedAt||0):s==='longago'?(a.lastCookedAt?1:0)-(b.lastCookedAt?1:0)||(a.lastCookedAt&&b.lastCookedAt?new Date(a.lastCookedAt)-new Date(b.lastCookedAt):0):new Date(b.createdAt||0)-new Date(a.createdAt||0));
@@ -95,7 +96,12 @@ function render(){
   $('#recipeCount').textContent=recipes.length+' '+(recipes.length===1?'Rezept':'Rezepte');
   const usedCats=cats.filter(c=>recipes.some(r=>r.category===c));
   $('#categoryChips').innerHTML=['Alle',...usedCats].map(c=>'<button class="chip '+(category===c?'active':'')+'" data-c="'+esc(c)+'">'+esc(c)+'</button>').join('');
-  $$('#categoryChips [data-c]').forEach(b=>b.onclick=()=>{category=b.dataset.c;render()});
+  $('#categoryChips [data-c]').forEach(b=>b.onclick=()=>{category=b.dataset.c;render()});
+  const contributorSelect=$('#contributorSelect');
+  if(contributorSelect){
+    const names=allContributors();
+    contributorSelect.innerHTML=['Alle',...names].map(n=>'<option value="'+esc(n)+'" '+(contributor===n?'selected':'')+'>'+esc(n)+'</option>').join('');
+  }
   $('#tagChips').innerHTML=allTags().map(t=>'<button class="chip '+(tags.has(t)?'active':'')+'" data-t="'+esc(t)+'">#'+esc(t)+'</button>').join('');
   $$('#tagChips [data-t]').forEach(b=>b.onclick=()=>{tags.has(b.dataset.t)?tags.delete(b.dataset.t):tags.add(b.dataset.t);render()});
   const rows=filter();
@@ -192,8 +198,8 @@ function detail(){
 }
 document.addEventListener('visibilitychange',()=>{if(cooking&&document.visibilityState==='visible')requestWakeLock()});
 
-$('#searchInput').oninput=render; ['maxCalories','minProtein','maxTime'].forEach(id=>$('#'+id).oninput=render); $('#sortSelect').onchange=render;
-$('#resetFilters').onclick=()=>{category='Alle';tags.clear();$('#searchInput').value='';$('#maxCalories').value='';$('#minProtein').value='';$('#maxTime').value='';render()};
+$('#searchInput').oninput=render; ['maxCalories','minProtein','maxTime'].forEach(id=>$('#'+id).oninput=render); $('#sortSelect').onchange=render; $('#contributorSelect').onchange=e=>{contributor=e.target.value;render()};
+$('#resetFilters').onclick=()=>{category='Alle';contributor='Alle';tags.clear();$('#searchInput').value='';$('#maxCalories').value='';$('#minProtein').value='';$('#maxTime').value='';$('#contributorSelect').value='Alle';render()};
 $('#filterToggle').onclick=()=>$('#filters').classList.toggle('open');
 $('#randomBtn').onclick=()=>{const r=filter();if(r.length)openDetail(r[Math.floor(Math.random()*r.length)].id)};
 [...document.querySelectorAll('[data-close-dialog]')].forEach(b=>b.onclick=async()=>{cooking=false;await releaseWakeLock();$('#recipeDialog').close()});
