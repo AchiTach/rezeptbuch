@@ -13,7 +13,7 @@ async function load(){
   const select=[
     'id','title','description','servings','prep_time_min','cook_time_min','total_time_min',
     'calories_per_serving','protein_g_per_serving','carbs_g_per_serving','fat_g_per_serving','fiber_g_per_serving',
-    'macro_source','source_type','source_url','source_author','image_url','notes','created_at','updated_at',
+    'macro_source','source_type','source_url','source_author','image_url','notes','added_by','created_at','updated_at',
     'categories(name)',
     'ingredients(position,amount,amount_text,unit,ingredient,note)',
     'instructions(position,instruction)',
@@ -45,6 +45,7 @@ async function load(){
       sourceAuthor:r.source_author,
       imageUrl:r.image_url,
       notes:r.notes,
+      addedBy:r.added_by||'',
       createdAt:r.created_at,
       updatedAt:r.updated_at,
       ingredients:[...(r.ingredients||[])].sort((a,b)=>(a.position||0)-(b.position||0)).map(i=>({amount:i.amount,amountText:i.amount_text,unit:i.unit,ingredient:i.ingredient,note:i.note})),
@@ -95,7 +96,8 @@ function render(){
 function card(r){
   const img=r.imageUrl?'<img src="'+esc(r.imageUrl)+'" alt="'+esc(r.title)+'">':'<div class="placeholder">'+esc(initials(r.title))+'</div>';
   const cooked='<div class="cook-meta"><span>🍳 '+(r.cookCount||0)+'× gekocht</span><span>'+(r.lastCookedAt?'zuletzt '+new Intl.DateTimeFormat('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(r.lastCookedAt)):'noch nie gekocht')+'</span></div>';
-  return '<article class="recipe-card" data-id="'+esc(r.id)+'"><div class="media">'+img+'<span>'+esc(r.category||'')+'</span></div><div class="body"><small>'+(r.totalMinutes?fmt(r.totalMinutes,0)+' Min.':'')+'</small><h3>'+esc(r.title)+'</h3><p>'+esc(r.description||'')+'</p>'+cooked+'<div class="stats"><b>'+fmt(r.calories,0)+'<small>kcal</small></b><b>'+(r.proteinG==null?'–':fmt(r.proteinG)+' g')+'<small>Protein</small></b><b>'+fmt(r.servings,1)+'<small>Portionen</small></b></div><div class="tags">'+(r.tags||[]).slice(0,3).map(t=>'<i>#'+esc(t)+'</i>').join('')+'</div></div></article>';
+  const added=r.addedBy?'<div class="added-by">Hinzugefügt von <b>'+esc(r.addedBy)+'</b></div>':'';
+  return '<article class="recipe-card" data-id="'+esc(r.id)+'"><div class="media">'+img+'<span>'+esc(r.category||'')+'</span></div><div class="body"><small>'+(r.totalMinutes?fmt(r.totalMinutes,0)+' Min.':'')+'</small><h3>'+esc(r.title)+'</h3><p>'+esc(r.description||'')+'</p>'+added+cooked+'<div class="stats"><b>'+fmt(r.calories,0)+'<small>kcal</small></b><b>'+(r.proteinG==null?'–':fmt(r.proteinG)+' g')+'<small>Protein</small></b><b>'+fmt(r.servings,1)+'<small>Portionen</small></b></div><div class="tags">'+(r.tags||[]).slice(0,3).map(t=>'<i>#'+esc(t)+'</i>').join('')+'</div></div></article>';
 }
 function openDetail(id){
   const r=recipes.find(x=>x.id===id); if(!r)return; current=r; servings=r.servings||1; cooking=false; detail(); $('#recipeDialog').showModal();
@@ -164,11 +166,12 @@ function detail(){
   $('#recipeDialog').classList.toggle('cooking',cooking);
   const ing=(r.ingredients||[]).map(i=>'<li><b>'+((n(i.amount)!=null?fmt(n(i.amount)*factor,2):esc(i.amountText||''))+(i.unit?' '+esc(i.unit):''))+'</b><span>'+esc(i.ingredient||'')+(i.note?'<small>'+esc(i.note)+'</small>':'')+'</span></li>').join('');
   const steps=(r.instructions||[]).map((s,i)=>cooking?'<li class="cook-step"><label><input type="checkbox"><span><b>Schritt '+(i+1)+'</b>'+esc(typeof s==='string'?s:s.instruction||'')+'</span></label></li>':'<li>'+esc(typeof s==='string'?s:s.instruction||'')+'</li>').join('');
+  const addedInfo=r.addedBy?'<div class="detail-added">Hinzugefügt von <b>'+esc(r.addedBy)+'</b></div>':'';
   const cookInfo='<div class="cook-history"><b>🍳 '+(r.cookCount||0)+'× gekocht</b><span>'+cookedLabel(r)+'</span></div>';
   const cookActions=cooking
     ?'<div class="cook-panel"><div><strong>Kochmodus aktiv</strong><span id="wakeStatus">Bildschirm-Wachhalten wird aktiviert …</span></div><div class="cook-actions"><button id="cancelCooking" class="secondary-btn" type="button">Kochmodus beenden</button><button id="finishCooking" class="primary-btn" type="button">✓ Fertig gekocht</button></div><small id="cookMessage"></small></div>'
     :'<div class="cook-panel start"><div><strong>Bereit zum Kochen?</strong><span>Im Kochmodus bleibt der Bildschirm auf unterstützten Geräten an.</span></div><button id="startCooking" class="cook-btn" type="button">🍳 Kochen starten</button><small id="cookMessage"></small></div>';
-  $('#recipeDetail').innerHTML='<div class="detailHead"><h2>'+esc(r.title)+'</h2><p>'+esc(r.description||'')+'</p></div><div class="detailBody">'+cookInfo+cookActions+'<div class="macro"><span><b>'+fmt(r.calories,0)+'</b> kcal</span><span><b>'+fmt(r.proteinG)+'</b> g Protein</span><span><b>'+fmt(r.carbsG)+'</b> g KH</span><span><b>'+fmt(r.fatG)+'</b> g Fett</span></div><div class="serv"><button data-s="-">−</button><strong>'+fmt(servings,2)+' Portionen</strong><button data-s="+">+</button></div><div class="cols"><section><h3>Zutaten</h3><ul class="ingredients">'+ing+'</ul></section><section><h3>Zubereitung</h3><ol class="'+(cooking?'cook-steps':'')+'">'+steps+'</ol></section></div>'+(r.sourceUrl?'<a class="source" href="'+esc(r.sourceUrl)+'" target="_blank" rel="noopener">Originalquelle öffnen ↗</a>':'')+'</div>';
+  $('#recipeDetail').innerHTML='<div class="detailHead"><h2>'+esc(r.title)+'</h2><p>'+esc(r.description||'')+'</p>'+addedInfo+'</div><div class="detailBody">'+cookInfo+cookActions+'<div class="macro"><span><b>'+fmt(r.calories,0)+'</b> kcal</span><span><b>'+fmt(r.proteinG)+'</b> g Protein</span><span><b>'+fmt(r.carbsG)+'</b> g KH</span><span><b>'+fmt(r.fatG)+'</b> g Fett</span></div><div class="serv"><button data-s="-">−</button><strong>'+fmt(servings,2)+' Portionen</strong><button data-s="+">+</button></div><div class="cols"><section><h3>Zutaten</h3><ul class="ingredients">'+ing+'</ul></section><section><h3>Zubereitung</h3><ol class="'+(cooking?'cook-steps':'')+'">'+steps+'</ol></section></div>'+(r.sourceUrl?'<a class="source" href="'+esc(r.sourceUrl)+'" target="_blank" rel="noopener">Originalquelle öffnen ↗</a>':'')+'</div>';
   $('[data-s]').forEach(b=>b.onclick=()=>{servings=Math.max(.25,servings+(b.dataset.s==='+'?1:-1));detail();if(cooking)requestWakeLock()});
   const start=$('#startCooking');if(start)start.onclick=startCooking;
   const cancel=$('#cancelCooking');if(cancel)cancel.onclick=cancelCooking;
