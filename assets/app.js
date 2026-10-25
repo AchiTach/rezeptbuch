@@ -23,13 +23,13 @@ async function load(){
   try{
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),10000);
-    const res=await fetch(url,{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY},signal:controller.signal});
+    const res=await fetch(url,{headers:{apikey:SUPABASE_KEY},signal:controller.signal});
     clearTimeout(timer);
     if(!res.ok) throw new Error('Supabase '+res.status);
     const rows=await res.json();
     let cookRows=[];
     try{
-      const cookRes=await fetch(SUPABASE_URL+'/rest/v1/recipe_cooks?select=recipe_id,cooked_at',{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY}});
+      const cookRes=await fetch(SUPABASE_URL+'/rest/v1/recipe_cooks?select=recipe_id,cooked_at',{headers:{apikey:SUPABASE_KEY}});
       if(cookRes.ok) cookRows=await cookRes.json();
     }catch(_){}
     const cookMap=new Map();
@@ -157,7 +157,7 @@ async function finishCooking(){
   try{
     const res=await fetch(SUPABASE_URL+'/rest/v1/recipe_cooks',{
       method:'POST',
-      headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+      headers:{apikey:SUPABASE_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
       body:JSON.stringify([{recipe_id:current.id}])
     });
     if(!res.ok)throw new Error('Supabase '+res.status);
