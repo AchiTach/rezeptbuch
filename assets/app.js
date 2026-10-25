@@ -17,14 +17,27 @@ async function load(){
     'categories(name)',
     'ingredients(position,amount,amount_text,unit,ingredient,note)',
     'instructions(position,instruction)',
-    'recipe_tags(tags(name))',
-    'recipe_cooks(cooked_at)'
+    'recipe_tags(tags(name))'
   ].join(',');
   const url=SUPABASE_URL+'/rest/v1/recipes?is_published=eq.true&order=created_at.desc&select='+encodeURIComponent(select);
   try{
-    const res=await fetch(url,{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY}});
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),10000);
+    const res=await fetch(url,{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY},signal:controller.signal});
+    clearTimeout(timer);
     if(!res.ok) throw new Error('Supabase '+res.status);
     const rows=await res.json();
+    let cookRows=[];
+    try{
+      const cookRes=await fetch(SUPABASE_URL+'/rest/v1/recipe_cooks?select=recipe_id,cooked_at',{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY}});
+      if(cookRes.ok) cookRows=await cookRes.json();
+    }catch(_){}
+    const cookMap=new Map();
+    cookRows.forEach(c=>{
+      const list=cookMap.get(c.recipe_id)||[];
+      list.push(c.cooked_at);
+      cookMap.set(c.recipe_id,list);
+    });
     recipes=rows.map(r=>({
       id:r.id,
       title:r.title,
@@ -51,8 +64,8 @@ async function load(){
       ingredients:[...(r.ingredients||[])].sort((a,b)=>(a.position||0)-(b.position||0)).map(i=>({amount:i.amount,amountText:i.amount_text,unit:i.unit,ingredient:i.ingredient,note:i.note})),
       instructions:[...(r.instructions||[])].sort((a,b)=>(a.position||0)-(b.position||0)).map(i=>({instruction:i.instruction})),
       tags:(r.recipe_tags||[]).map(rt=>rt.tags?.name).filter(Boolean).sort(),
-      cookCount:(r.recipe_cooks||[]).length,
-      lastCookedAt:(r.recipe_cooks||[]).map(x=>x.cooked_at).filter(Boolean).sort().at(-1)||null
+      cookCount:(cookMap.get(r.id)||[]).length,
+      lastCookedAt:(cookMap.get(r.id)||[]).filter(Boolean).sort().slice(-1)[0]||null
     }));
     $('#errorState').classList.add('hidden');
   }catch(e){
