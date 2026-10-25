@@ -13,3 +13,7 @@
 .recipe-dialog.cooking .detailHead{padding-top:42px}.recipe-dialog.cooking .cols{align-items:start}
 .cook-steps{list-style:none;padding:0;counter-reset:none}.cook-step{border:1px solid var(--line);border-radius:14px;padding:0;margin:0 0 10px;background:var(--bg)}.cook-step label{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:14px;cursor:pointer}.cook-step input{width:22px;height:22px;margin-top:2px;accent-color:var(--accent)}.cook-step span{display:flex;flex-direction:column;gap:4px}.cook-step input:checked+span{opacity:.55;text-decoration:line-through}.cook-step b{font-size:.74rem;color:var(--warm);text-transform:uppercase;letter-spacing:.08em}
 @media(max-width:640px){.recipe-dialog.cooking{width:100vw;height:100vh;max-height:100vh}.cook-panel{align-items:stretch;flex-direction:column}.cook-actions{display:grid;grid-template-columns:1fr}.cook-btn,.secondary-btn,.cook-actions .primary-btn{width:100%;min-height:48px}.cook-history{flex-direction:column;gap:2px}}
+
+.added-by{margin:8px 0 4px;color:var(--muted);font-size:.78rem}
+.added-by b,.detail-added b{color:var(--text)}
+.detail-added{margin-top:10px;color:var(--muted);font-size:.88rem}
