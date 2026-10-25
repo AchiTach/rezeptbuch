@@ -93,11 +93,11 @@ function ingredientRole(r,kind){
 }
 function filter(){
   const q=$('#searchInput').value.trim().toLowerCase();
-  const base=$('#baseIngredient').value, role=$('#baseRole').value;
+  const base=$('#baseIngredient').value;
   const maxC=n($('#maxCalories').value), minP=n($('#minProtein').value), maxT=n($('#maxTime').value);
   let out=recipes.filter(r=>{
     const hay=[r.title,r.description,r.category,...(r.tags||[]),...(r.ingredients||[]).map(i=>i.ingredient)].join(' ').toLowerCase();
-    return (base==='all'||(ingredientRole(r,base)!==null&&(role==='all'||ingredientRole(r,base)===role)))&&(!q||hay.includes(q))&&(category==='Alle'||r.category===category)&&(contributor==='Alle'||r.addedBy===contributor)&&[...tags].every(t=>(r.tags||[]).includes(t))&&(maxC==null||r.calories==null||r.calories<=maxC)&&(minP==null||r.proteinG==null||r.proteinG>=minP)&&(maxT==null||r.totalMinutes==null||r.totalMinutes<=maxT);
+    return (base==='all'||ingredientRole(r,base)!==null)&&(!q||hay.includes(q))&&(category==='Alle'||r.category===category)&&(contributor==='Alle'||r.addedBy===contributor)&&[...tags].every(t=>(r.tags||[]).includes(t))&&(maxC==null||r.calories==null||r.calories<=maxC)&&(minP==null||r.proteinG==null||r.proteinG>=minP)&&(maxT==null||r.totalMinutes==null||r.totalMinutes<=maxT);
   });
   const s=$('#sortSelect').value;
   out.sort((a,b)=>s==='az'?a.title.localeCompare(b.title,'de'):s==='za'?b.title.localeCompare(a.title,'de'):s==='protein'?(b.proteinG||-1)-(a.proteinG||-1):s==='calories'?(a.calories??Infinity)-(b.calories??Infinity):s==='time'?(a.totalMinutes??Infinity)-(b.totalMinutes??Infinity):s==='cooked'?(b.cookCount||0)-(a.cookCount||0)||new Date(b.lastCookedAt||0)-new Date(a.lastCookedAt||0):s==='leastcooked'?(a.cookCount||0)-(b.cookCount||0)||new Date(a.lastCookedAt||0)-new Date(b.lastCookedAt||0):s==='recentlycooked'?new Date(b.lastCookedAt||0)-new Date(a.lastCookedAt||0):s==='longago'?(a.lastCookedAt?1:0)-(b.lastCookedAt?1:0)||(a.lastCookedAt&&b.lastCookedAt?new Date(a.lastCookedAt)-new Date(b.lastCookedAt):0):new Date(b.createdAt||0)-new Date(a.createdAt||0));
@@ -209,8 +209,8 @@ function detail(){
 }
 document.addEventListener('visibilitychange',()=>{if(cooking&&document.visibilityState==='visible')requestWakeLock()});
 
-$('#searchInput').oninput=render; ['maxCalories','minProtein','maxTime'].forEach(id=>$('#'+id).oninput=render); $('#sortSelect').onchange=render; $('#baseIngredient').onchange=render; $('#baseRole').onchange=render; $('#contributorSelect').onchange=e=>{contributor=e.target.value;render()};
-$('#resetFilters').onclick=()=>{category='Alle';contributor='Alle';tags.clear();$('#baseIngredient').value='all';$('#baseRole').value='all';$('#searchInput').value='';$('#maxCalories').value='';$('#minProtein').value='';$('#maxTime').value='';$('#contributorSelect').value='Alle';render()};
+$('#searchInput').oninput=render; ['maxCalories','minProtein','maxTime'].forEach(id=>$('#'+id).oninput=render); $('#sortSelect').onchange=render; $('#baseIngredient').onchange=render; $('#contributorSelect').onchange=e=>{contributor=e.target.value;render()};
+$('#resetFilters').onclick=()=>{category='Alle';contributor='Alle';tags.clear();$('#baseIngredient').value='all';$('#searchInput').value='';$('#maxCalories').value='';$('#minProtein').value='';$('#maxTime').value='';$('#contributorSelect').value='Alle';render()};
 $('#filterToggle').onclick=()=>$('#filters').classList.toggle('open');
 $('#randomBtn').onclick=()=>{const r=filter();if(r.length)openDetail(r[Math.floor(Math.random()*r.length)].id)};
 [...document.querySelectorAll('[data-close-dialog]')].forEach(b=>b.onclick=async()=>{cooking=false;await releaseWakeLock();$('#recipeDialog').close()});
