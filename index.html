@@ -10,6 +10,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/styles.css?v=20261025-1110" />
+<style>
+.tag-disclosure{width:100%;min-width:0}
+.tag-disclosure summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none;padding:14px 16px;border:1px solid #d9d6ce;border-radius:14px;font-weight:600;color:inherit;background:transparent}
+.tag-disclosure summary::-webkit-details-marker{display:none}
+.tag-disclosure summary:focus-visible{outline:2px solid #245642;outline-offset:3px}
+.tag-disclosure .tag-chevron{font-size:22px;line-height:1;transition:transform .2s}
+.tag-disclosure[open] .tag-chevron{transform:rotate(180deg)}
+.tag-disclosure-content{padding-top:16px}
+</style>
 </head>
 <body>
   <header class="site-header">
@@ -48,7 +57,7 @@
           <label><span class="filter-label">max. Zeit</span><input id="maxTime" type="number" min="0" step="5" placeholder="Min." /></label>
           <label><span class="filter-label">Sortierung</span><select id="sortSelect"><option value="newest">Neueste</option><option value="az">A–Z</option><option value="za">Z–A</option><option value="protein">Protein ↓</option><option value="calories">Kalorien ↑</option><option value="time">Zeit ↑</option><option value="cooked">Kochanzahl: Höchste zuerst</option><option value="leastcooked">Kochanzahl: Niedrigste zuerst</option><option value="recentlycooked">Kochdatum: Neueste zuerst</option><option value="longago">Kochdatum: Älteste zuerst</option></select></label>
         </div>
-        <div class="filter-footer"><div id="tagChips" class="chips compact"></div><button id="resetFilters" class="text-btn" type="button">Filter zurücksetzen</button></div>
+        <div class="filter-footer"><details class="tag-disclosure"><summary>Tags / Schlagwörter <span class="tag-chevron" aria-hidden="true">⌄</span></summary><div id="tagChips" class="chips compact tag-disclosure-content"></div></details><button id="resetFilters" class="text-btn" type="button">Filter zurücksetzen</button></div>
       </div>
     </section>
 
