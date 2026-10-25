@@ -172,7 +172,7 @@ function detail(){
     ?'<div class="cook-panel"><div><strong>Kochmodus aktiv</strong><span id="wakeStatus">Bildschirm-Wachhalten wird aktiviert …</span></div><div class="cook-actions"><button id="cancelCooking" class="secondary-btn" type="button">Kochmodus beenden</button><button id="finishCooking" class="primary-btn" type="button">✓ Fertig gekocht</button></div><small id="cookMessage"></small></div>'
     :'<div class="cook-panel start"><div><strong>Bereit zum Kochen?</strong><span>Im Kochmodus bleibt der Bildschirm auf unterstützten Geräten an.</span></div><button id="startCooking" class="cook-btn" type="button">🍳 Kochen starten</button><small id="cookMessage"></small></div>';
   $('#recipeDetail').innerHTML='<div class="detailHead"><h2>'+esc(r.title)+'</h2><p>'+esc(r.description||'')+'</p>'+addedInfo+'</div><div class="detailBody">'+cookInfo+cookActions+'<div class="macro"><span><b>'+fmt(r.calories,0)+'</b> kcal</span><span><b>'+fmt(r.proteinG)+'</b> g Protein</span><span><b>'+fmt(r.carbsG)+'</b> g KH</span><span><b>'+fmt(r.fatG)+'</b> g Fett</span></div><div class="serv"><button data-s="-">−</button><strong>'+fmt(servings,2)+' Portionen</strong><button data-s="+">+</button></div><div class="cols"><section><h3>Zutaten</h3><ul class="ingredients">'+ing+'</ul></section><section><h3>Zubereitung</h3><ol class="'+(cooking?'cook-steps':'')+'">'+steps+'</ol></section></div>'+(r.sourceUrl?'<a class="source" href="'+esc(r.sourceUrl)+'" target="_blank" rel="noopener">Originalquelle öffnen ↗</a>':'')+'</div>';
-  $('[data-s]').forEach(b=>b.onclick=()=>{servings=Math.max(.25,servings+(b.dataset.s==='+'?1:-1));detail();if(cooking)requestWakeLock()});
+  [...document.querySelectorAll('[data-s]')].forEach(b=>b.onclick=()=>{servings=Math.max(.25,servings+(b.dataset.s==='+'?1:-1));detail();if(cooking)requestWakeLock()});
   const start=$('#startCooking');if(start)start.onclick=startCooking;
   const cancel=$('#cancelCooking');if(cancel)cancel.onclick=cancelCooking;
   const finish=$('#finishCooking');if(finish)finish.onclick=finishCooking;
@@ -183,7 +183,7 @@ $('#searchInput').oninput=render; ['maxCalories','minProtein','maxTime'].forEach
 $('#resetFilters').onclick=()=>{category='Alle';tags.clear();$('#searchInput').value='';$('#maxCalories').value='';$('#minProtein').value='';$('#maxTime').value='';render()};
 $('#filterToggle').onclick=()=>$('#filters').classList.toggle('open');
 $('#randomBtn').onclick=()=>{const r=filter();if(r.length)openDetail(r[Math.floor(Math.random()*r.length)].id)};
-$('[data-close-dialog]').forEach(b=>b.onclick=async()=>{cooking=false;await releaseWakeLock();$('#recipeDialog').close()});
+[...document.querySelectorAll('[data-close-dialog]')].forEach(b=>b.onclick=async()=>{cooking=false;await releaseWakeLock();$('#recipeDialog').close()});
 $('#recipeDialog').addEventListener('close',()=>{cooking=false;releaseWakeLock()});
 $('#retryBtn').onclick=load;
 const th=localStorage.getItem('rezeptbuch.theme')||'light';document.documentElement.dataset.theme=th;$('#themeToggle').textContent=th==='dark'?'☀':'☾';
