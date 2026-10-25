@@ -17,3 +17,16 @@
 .added-by{margin:8px 0 4px;color:var(--muted);font-size:.78rem}
 .added-by b,.detail-added b{color:var(--text)}
 .detail-added{margin-top:10px;color:var(--muted);font-size:.88rem}
+
+
+.cook-count-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:.25rem;
+  font-weight:800;
+  font-size:.95rem;
+}
+.cook-count-large{
+  font-size:1.15rem;
+  font-weight:800;
+}
