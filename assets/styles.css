@@ -30,3 +30,8 @@
   font-size:1.15rem;
   font-weight:800;
 }
+
+.cook-by{display:flex;flex-wrap:wrap;gap:.4rem .75rem;margin-top:.35rem;font-size:.84rem;opacity:.9}
+.cook-by.detail{font-size:.95rem}
+.cook-person-label{display:flex;flex-direction:column;gap:.4rem;font-weight:700;margin:.8rem 0}
+.cook-person-label select{width:100%;padding:.8rem;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:inherit;font:inherit}
