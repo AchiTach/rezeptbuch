@@ -29,14 +29,16 @@ async function load(){
     const rows=await res.json();
     let cookRows=[];
     try{
-      const cookRes=await fetch(SUPABASE_URL+'/rest/v1/recipe_cooks?select=recipe_id,cooked_at',{headers:{apikey:SUPABASE_KEY}});
+      const cookRes=await fetch(SUPABASE_URL+'/rest/v1/recipe_cooks?select=recipe_id,cooked_at,cooked_by',{headers:{apikey:SUPABASE_KEY}});
       if(cookRes.ok) cookRows=await cookRes.json();
     }catch(_){}
     const cookMap=new Map();
     cookRows.forEach(c=>{
-      const list=cookMap.get(c.recipe_id)||[];
-      list.push(c.cooked_at);
-      cookMap.set(c.recipe_id,list);
+      const data=cookMap.get(c.recipe_id)||{dates:[],by:{Achi:0,Maria:0,Christos:0,Unbekannt:0}};
+      data.dates.push(c.cooked_at);
+      const who=c.cooked_by||'Unbekannt';
+      data.by[who]=(data.by[who]||0)+1;
+      cookMap.set(c.recipe_id,data);
     });
     recipes=rows.map(r=>({
       id:r.id,
@@ -64,8 +66,9 @@ async function load(){
       ingredients:[...(r.ingredients||[])].sort((a,b)=>(a.position||0)-(b.position||0)).map(i=>({amount:i.amount,amountText:i.amount_text,unit:i.unit,ingredient:i.ingredient,note:i.note})),
       instructions:[...(r.instructions||[])].sort((a,b)=>(a.position||0)-(b.position||0)).map(i=>({instruction:i.instruction})),
       tags:(r.recipe_tags||[]).map(rt=>rt.tags?.name).filter(Boolean).sort(),
-      cookCount:(cookMap.get(r.id)||[]).length,
-      lastCookedAt:(cookMap.get(r.id)||[]).filter(Boolean).sort().slice(-1)[0]||null
+      cookCount:(cookMap.get(r.id)?.dates||[]).length,
+      lastCookedAt:(cookMap.get(r.id)?.dates||[]).filter(Boolean).sort().slice(-1)[0]||null,
+      cookBy:cookMap.get(r.id)?.by||{Achi:0,Maria:0,Christos:0,Unbekannt:0}
     }));
     $('#errorState').classList.add('hidden');
   }catch(e){
@@ -125,7 +128,7 @@ function render(){
 }
 function card(r){
   const img=r.imageUrl?'<img src="'+esc(r.imageUrl)+'" alt="'+esc(r.title)+'">':'<div class="placeholder">'+esc(initials(r.title))+'</div>';
-  const cooked='<div class="cook-meta"><span class="cook-count-badge">🍳 '+(r.cookCount||0)+'× gekocht</span><span>'+(r.lastCookedAt?'zuletzt '+new Intl.DateTimeFormat('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(r.lastCookedAt)):'noch nie gekocht')+'</span></div>';
+  const cooked='<div class="cook-meta"><span class="cook-count-badge">🍳 '+(r.cookCount||0)+'× gekocht</span><span>'+(r.lastCookedAt?'zuletzt '+new Intl.DateTimeFormat('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(r.lastCookedAt)):'noch nie gekocht')+'</span><div class="cook-by">'+cookBreakdown(r)+'</div></div>';
   const added=r.addedBy?'<div class="added-by">Hinzugefügt von <b>'+esc(r.addedBy)+'</b></div>':'';
   return '<article class="recipe-card" data-id="'+esc(r.id)+'"><div class="media">'+img+'<span>'+esc(r.category||'')+'</span></div><div class="body"><small>'+(r.totalMinutes?fmt(r.totalMinutes,0)+' Min.':'')+'</small><h3>'+esc(r.title)+'</h3><p>'+esc(r.description||'')+'</p>'+added+cooked+'<div class="stats"><b>'+fmt(r.calories,0)+'<small>kcal</small></b><b>'+(r.proteinG==null?'–':fmt(r.proteinG)+' g')+'<small>Protein</small></b><b>'+fmt(r.servings,1)+'<small>Portionen</small></b></div><div class="tags">'+(r.tags||[]).slice(0,3).map(t=>'<i>#'+esc(t)+'</i>').join('')+'</div></div></article>';
 }
@@ -133,6 +136,10 @@ function openDetail(id){
   const r=recipes.find(x=>x.id===id); if(!r)return; current=r; servings=r.servings||1; cooking=false; detail(); $('#recipeDialog').showModal();
 }
 
+function cookBreakdown(r){
+  const by=r.cookBy||{};
+  return ['Achi','Maria','Christos'].map(n=>'<span><b>'+esc(n)+'</b> '+(by[n]||0)+'×</span>').join('');
+}
 function cookedLabel(r){
   if(!r.lastCookedAt)return 'Noch nie gekocht';
   return 'Zuletzt gekocht am '+new Intl.DateTimeFormat('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(r.lastCookedAt));
@@ -169,17 +176,21 @@ async function cancelCooking(){
 async function finishCooking(){
   const btn=$('#finishCooking');
   const msg=$('#cookMessage');
+  const person=$('#cookPerson')?.value||'';
+  if(!person){if(msg)msg.textContent='Bitte zuerst Achi, Maria oder Christos auswählen.';return;}
   if(btn)btn.disabled=true;
   if(msg)msg.textContent='Wird gespeichert …';
   try{
     const res=await fetch(SUPABASE_URL+'/rest/v1/recipe_cooks',{
       method:'POST',
       headers:{apikey:SUPABASE_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
-      body:JSON.stringify([{recipe_id:current.id}])
+      body:JSON.stringify([{recipe_id:current.id,cooked_by:person}])
     });
     if(!res.ok)throw new Error('Supabase '+res.status);
     current.cookCount=(current.cookCount||0)+1;
     current.lastCookedAt=new Date().toISOString();
+    current.cookBy=current.cookBy||{Achi:0,Maria:0,Christos:0,Unbekannt:0};
+    current.cookBy[person]=(current.cookBy[person]||0)+1;
     cooking=false;
     await releaseWakeLock();
     detail();
@@ -197,9 +208,9 @@ function detail(){
   const ing=(r.ingredients||[]).map(i=>'<li><b>'+((n(i.amount)!=null?fmt(n(i.amount)*factor,2):esc(i.amountText||''))+(i.unit?' '+esc(i.unit):''))+'</b><span>'+esc(i.ingredient||'')+(i.note?'<small>'+esc(i.note)+'</small>':'')+'</span></li>').join('');
   const steps=(r.instructions||[]).map((s,i)=>cooking?'<li class="cook-step"><label><input type="checkbox"><span><b>Schritt '+(i+1)+'</b>'+esc(typeof s==='string'?s:s.instruction||'')+'</span></label></li>':'<li>'+esc(typeof s==='string'?s:s.instruction||'')+'</li>').join('');
   const addedInfo=r.addedBy?'<div class="detail-added">Hinzugefügt von <b>'+esc(r.addedBy)+'</b></div>':'';
-  const cookInfo='<div class="cook-history"><b class="cook-count-large">🍳 '+(r.cookCount||0)+'× gekocht</b><span>'+cookedLabel(r)+'</span></div>';
+  const cookInfo='<div class="cook-history"><b class="cook-count-large">🍳 '+(r.cookCount||0)+'× gekocht</b><span>'+cookedLabel(r)+'</span><div class="cook-by detail">'+cookBreakdown(r)+'</div></div>';
   const cookActions=cooking
-    ?'<div class="cook-panel"><div><strong>Kochmodus aktiv</strong><span id="wakeStatus">Bildschirm-Wachhalten wird aktiviert …</span></div><div class="cook-actions"><button id="cancelCooking" class="secondary-btn" type="button">Kochmodus beenden</button><button id="finishCooking" class="primary-btn" type="button">✓ Fertig gekocht</button></div><small id="cookMessage"></small></div>'
+    ?'<div class="cook-panel"><div><strong>Kochmodus aktiv</strong><span id="wakeStatus">Bildschirm-Wachhalten wird aktiviert …</span></div><label class="cook-person-label">Wer hat gekocht?<select id="cookPerson"><option value="">Bitte auswählen</option><option value="Achi">Achi</option><option value="Maria">Maria</option><option value="Christos">Christos</option></select></label><div class="cook-actions"><button id="cancelCooking" class="secondary-btn" type="button">Kochmodus beenden</button><button id="finishCooking" class="primary-btn" type="button">✓ Fertig gekocht</button></div><small id="cookMessage"></small></div>'
     :'<div class="cook-panel start"><div><strong>Bereit zum Kochen?</strong><span>Im Kochmodus bleibt der Bildschirm auf unterstützten Geräten an.</span></div><button id="startCooking" class="cook-btn" type="button">🍳 Kochen starten</button><small id="cookMessage"></small></div>';
   $('#recipeDetail').innerHTML='<div class="detailHead"><h2>'+esc(r.title)+'</h2><p>'+esc(r.description||'')+'</p>'+addedInfo+'</div><div class="detailBody">'+cookInfo+cookActions+'<div class="macro"><span><b>'+fmt(r.calories,0)+'</b> kcal</span><span><b>'+fmt(r.proteinG)+'</b> g Protein</span><span><b>'+fmt(r.carbsG)+'</b> g KH</span><span><b>'+fmt(r.fatG)+'</b> g Fett</span></div><div class="serv"><button data-s="-">−</button><strong>'+fmt(servings,2)+' Portionen</strong><button data-s="+">+</button></div><div class="cols"><section><h3>Zutaten</h3><ul class="ingredients">'+ing+'</ul></section><section><h3>Zubereitung</h3><ol class="'+(cooking?'cook-steps':'')+'">'+steps+'</ol></section></div>'+(r.sourceUrl?'<a class="source" href="'+esc(r.sourceUrl)+'" target="_blank" rel="noopener">Originalquelle öffnen ↗</a>':'')+'</div>';
   [...document.querySelectorAll('[data-s]')].forEach(b=>b.onclick=()=>{servings=Math.max(.25,servings+(b.dataset.s==='+'?1:-1));detail();if(cooking)requestWakeLock()});
